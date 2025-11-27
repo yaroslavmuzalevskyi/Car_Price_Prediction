@@ -1,5 +1,10 @@
 # Before running API
 
+## Setting up **venv**: 
+1. `python3 -m venv venv`
+2. `python3 source venv.bin/activate`
+3. `pip3 install -r requirements.txt`
+
 ## Training missing models
 
 `python3 train_used_car_price_model.py --n-trees 50 --max-text-features 5000`
@@ -15,8 +20,8 @@ Repeat the process as many times as you need with different `--n-trees` parament
 # Running the APi
 
 1. Open **predict_car_price.py** and write all numbers for models you have to `model_set`. For example: if you have 2 models: **used_car_price_model_12.joblib** and **used_car_price_model_25**, your `model_set = [12, 25]`
-2. Run `uvicord main:app --reload` in the terminal
-3. Send a POST request with details to 127.0.0.1:8000/get_price formatted like follows:
+3. Run `python3 -m uvicorn main:app --reload` in the terminal.
+4. Send a POST request with details to 127.0.0.1:8000/get_price formatted like follows:
    
 {
     "brand": "Audi",

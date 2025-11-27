@@ -3,21 +3,21 @@ import joblib
 import numpy as np
 import pandas as pd
 
-external_call = False
-model_set = [12, 25, 50, 300]
-
+model_set = [1, 10, 25, 50, 300]
 
 
 def load_model(model_path: str):
     """
     Load the trained pipeline (preprocessor + RandomForestRegressor).
     """
+    m = joblib.load(model_path)
+    joblib.dump(m, model_path)
     return joblib.load(model_path)
 
 
-def predict_with_uncertainty(model, X: pd.DataFrame,
-                             lower_q: float = 2.5,
-                             upper_q: float = 97.5):
+def predict_with_uncertainty(
+    model, X: pd.DataFrame, lower_q: float = 2.5, upper_q: float = 97.5
+):
     """
     Compute price prediction + uncertainty using tree-wise variance
     from the RandomForestRegressor inside the pipeline.
@@ -76,8 +76,28 @@ def build_input_dataframe(args: argparse.Namespace) -> pd.DataFrame:
     return pd.DataFrame([data])
 
 
-def main(brand=None, model=None, year=None, mileage_in_km=None, offer_description=None, power_kw=None, transmission_type=None, fuel_type=None, model_id=None):
-    if brand is None or model is None or year is None or mileage_in_km is None or power_kw is None or transmission_type is None or fuel_type is None:
+def main(
+    brand=None,
+    model=None,
+    year=None,
+    mileage_in_km=None,
+    offer_description=None,
+    power_kw=None,
+    transmission_type=None,
+    fuel_type=None,
+    model_id=None,
+):
+    external_call = False
+    if (
+        brand is None
+        or model is None
+        or year is None
+        or mileage_in_km is None
+        or power_kw is None
+        or transmission_type is None
+        or fuel_type is None
+        or model_id is None
+    ):
         parser = argparse.ArgumentParser(
             description="Predict used car price with uncertainty."
         )
@@ -85,13 +105,16 @@ def main(brand=None, model=None, year=None, mileage_in_km=None, offer_descriptio
         parser.add_argument(
             "--model-path",
             type=str,
-            default="models/used_car_price_model.joblib",
+            required=True,
+            default="models/used_car_price_model_50.joblib",
             help="Path to the trained model file.",
         )
 
         parser.add_argument("--brand", type=str, required=True, help="Car brand.")
         parser.add_argument("--model", type=str, required=True, help="Car model.")
-        parser.add_argument("--year", type=int, required=True, help="Year of production.")
+        parser.add_argument(
+            "--year", type=int, required=True, help="Year of production."
+        )
         parser.add_argument(
             "--power_kw",
             type=float,
@@ -126,10 +149,10 @@ def main(brand=None, model=None, year=None, mileage_in_km=None, offer_descriptio
 
         args = parser.parse_args()
     else:
-        if model_id not in [12, 25, 50, 300]:
+        if model_id not in model_set:
             output = {
                 "status": False,
-                "error_message": f"Invalid model_id {model_id}. Must be one of [12, 25, 50, 300].",
+                "error_message": f"Invalid model_id {model_id}. Must be one of {str(model_set)}.",
             }
             return output
         args = argparse.Namespace()
@@ -145,15 +168,13 @@ def main(brand=None, model=None, year=None, mileage_in_km=None, offer_descriptio
         args.offer_description = offer_description
 
     # Load model
-    model = load_model(args.model_path)
+    model = load_model(str(args.model_path))
 
     # Build input
     X = build_input_dataframe(args)
 
     # Predict with uncertainty
-    mean_pred, std_pred, lower, upper, confidence = predict_with_uncertainty(
-        model, X
-    )
+    mean_pred, std_pred, lower, upper, confidence = predict_with_uncertainty(model, X)
 
     price = mean_pred[0]
     std = std_pred[0]
@@ -169,7 +190,7 @@ def main(brand=None, model=None, year=None, mileage_in_km=None, offer_descriptio
         "confidence_score": conf,
     }
 
-    if external_call:
+    if external_call == True:
         return output
 
     print("=== Prediction result ===")

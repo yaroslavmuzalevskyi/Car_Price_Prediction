@@ -1,0 +1,11 @@
+numpy==1.25.2
+pandas==2.3.3
+joblib==1.4.2
+tqdm==4.67.0
+tqdm_joblib==0.0.5
+kagglehub==0.3.13
+scikit-learn==1.2.2
+fastapi==0.121.2
+pydantic==2.10.5
+pydantic_core==2.27.2
+uvicorn==0.38.0
