@@ -19,13 +19,14 @@ import kagglehub
 
 import argparse
 
-N_ESTIMATORS = 12  # Number of trees in the RandomForest
+# N_ESTIMATORS = 15  # Number of trees in the RandomForest
 N_MAX_TEXT_FEATURES = 5000  # Max features for TfidfVectorizer
 
 
 # -------------------------------------------------------------------
 # 1. Data loading
 # -------------------------------------------------------------------
+
 
 def load_raw_dataset() -> pd.DataFrame:
     """
@@ -49,6 +50,7 @@ def load_raw_dataset() -> pd.DataFrame:
 # -------------------------------------------------------------------
 # 2. Column standardization & feature engineering
 # -------------------------------------------------------------------
+
 
 def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -88,9 +90,7 @@ def ensure_power_kw(df: pd.DataFrame) -> pd.DataFrame:
         df["power_kw"] = df["power_ps"].astype(float) * 0.735499
         return df
 
-    raise KeyError(
-        "Neither 'power_kw' nor 'Power in PS'/'power_ps' found in dataset."
-    )
+    raise KeyError("Neither 'power_kw' nor 'Power in PS'/'power_ps' found in dataset.")
 
 
 def prepare_dataset(
@@ -143,9 +143,11 @@ def prepare_dataset(
 
     return X, y, numeric_features, categorical_features
 
+
 # -------------------------------------------------------------------
 # 3. Model building (pipeline)
 # -------------------------------------------------------------------
+
 
 def build_model(
     numeric_features: list,
@@ -157,18 +159,17 @@ def build_model(
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-            "--n-trees",
-            type=int,
-            required=True,
-            help="Number of trees in the RandomForest.",
-            default=N_ESTIMATORS,
+        "--n-trees",
+        type=int,
+        required=True,
+        help="Number of trees in the RandomForest.",
     )
     parser.add_argument(
-            "--max-text-features",
-            type=int,
-            required=False,
-            help="Max features for TfidfVectorizer.",
-            default=N_MAX_TEXT_FEATURES,
+        "--max-text-features",
+        type=int,
+        required=False,
+        help="Max features for TfidfVectorizer.",
+        default=N_MAX_TEXT_FEATURES,
     )
     args = parser.parse_args()
 
@@ -218,11 +219,13 @@ def build_model(
         ]
     )
 
-    return model
+    return model, args.n_trees
+
 
 # -------------------------------------------------------------------
 # 4. Uncertainty estimation (via RandomForest ensemble)
 # -------------------------------------------------------------------
+
 
 def predict_with_uncertainty(
     model: Pipeline,
@@ -270,6 +273,7 @@ def predict_with_uncertainty(
 # 5. Training and evaluation
 # -------------------------------------------------------------------
 
+
 def train_and_evaluate() -> Pipeline:
     """
     Full training routine:
@@ -292,7 +296,7 @@ def train_and_evaluate() -> Pipeline:
         shuffle=True,
     )
 
-    model = build_model(numeric_features, categorical_features)
+    model, n_trees = build_model(numeric_features, categorical_features)
 
     print("Fitting model...")
     model.fit(X_train, y_train)
@@ -313,7 +317,7 @@ def train_and_evaluate() -> Pipeline:
 
     # Save the trained pipeline
     os.makedirs("models", exist_ok=True)
-    model_path = os.path.join("models", f"used_car_price_model_{N_ESTIMATORS}.joblib")
+    model_path = os.path.join("models", f"used_car_price_model_{n_trees}.joblib")
     joblib.dump(model, model_path)
     print(f"Saved trained model to: {model_path}")
 
@@ -323,6 +327,7 @@ def train_and_evaluate() -> Pipeline:
 # -------------------------------------------------------------------
 # 6. Example usage for a new prediction
 # -------------------------------------------------------------------
+
 
 def example_prediction(model: Pipeline):
     """
