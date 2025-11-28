@@ -15,7 +15,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 DATASET_PATH = ROOT_DIR / "y_muz_noAPI" / "data.csv"
 MODELS_DIR = ROOT_DIR / "models"
 
-DEFAULT_MODEL_IDS = [12, 25, 50, 300]
+DEFAULT_MODEL_IDS = [2, 6, 12, 48, 256]
 KNOWN_TRANSMISSIONS = ["Automatic", "Manual", "Semi-automatic", "Unknown"]
 KNOWN_FUEL_TYPES = [
     "Petrol",
@@ -23,28 +23,29 @@ KNOWN_FUEL_TYPES = [
     "Hybrid",
     "Diesel Hybrid",
     "Electric",
-    "LPG", 
+    "LPG",
     "CNG",
     "Other",
     "Unknown",
 ]
 
 FALLBACK_BRAND_MODELS = {
-    "audi": ["Audi A1", "Audi A3", "Audi A4", "Audi A5", "Audi Q5"],
-    "bmw": ["BMW 118", "BMW 318", "BMW 320", "BMW 520", "BMW X5"],
-    "mercedes-benz": [
-        "Mercedes-Benz A 180",
-        "Mercedes-Benz C 200",
-        "Mercedes-Benz E 220",
-        "Mercedes-Benz GLC 300",
+    "Audi": ["Audi A1", "Audi A3", "Audi A4", "Audi A5", "Audi Q5"],
+    "BMW": ["BMW 118", "BMW 318", "BMW 320", "BMW 520", "BMW X5"],
+    "Mercedes-Benz": [
+        "A 150",
+        "A 180",
+        "C 200",
+        "E 220",
+        "GLC 300",
     ],
-    "volkswagen": [
-        "Volkswagen Golf",
-        "Volkswagen Passat Variant",
-        "Volkswagen Tiguan",
-        "Volkswagen Polo",
+    "Volkswagen": [
+        "Golf",
+        "Passat Variant",
+        "Tiguan",
+        "Polo",
     ],
-    "skoda": ["Skoda Fabia", "Skoda Octavia", "Skoda Superb", "Skoda Kodiaq"],
+    "Skoda": ["Fabia", "Octavia", "Superb", "Kodiaq"],
 }
 
 DESCRIPTION_PRESETS = [
@@ -64,9 +65,10 @@ DESCRIPTION_PRESET_MAP = dict(DESCRIPTION_PRESETS)
 MODEL_FILE_PATTERN = re.compile(r"used_car_price_model_(\d+)\.joblib$")
 KNOWN_TRANSMISSION_SET = set(KNOWN_TRANSMISSIONS)
 KNOWN_FUEL_SET = set(KNOWN_FUEL_TYPES)
-YEAR_CHOICES = [str(year) for year in range(1950, 2026)]
-POWER_CHOICES = [str(power) for power in range(40, 601, 10)]
-MILEAGE_CHOICES = ["1000"] + [str(value) for value in range(25000, 400001, 25000)]
+YEAR_CHOICES = [str(year) for year in range(1960, 2024)]
+# POWER_CHOICES = [str(power) for power in range(40, 601, 10)]
+# MIN_POWER, MAX_POWER = 40, 600
+MILEAGE_CHOICES = [str(value) for value in range(0, 400001, 5000)]
 
 
 @dataclass(frozen=True)
@@ -180,7 +182,7 @@ MODEL_ID_HELP_TEXT = (
     "--n-trees <N>` to add more files/IDs."
 )
 DEFAULT_YEAR_VALUE = "2015" if "2015" in YEAR_CHOICES else YEAR_CHOICES[0]
-DEFAULT_POWER_VALUE = "110" if "110" in POWER_CHOICES else POWER_CHOICES[0]
+DEFAULT_POWER_VALUE = "110"
 DEFAULT_MILEAGE_VALUE = "120000" if "120000" in MILEAGE_CHOICES else MILEAGE_CHOICES[0]
 
 
@@ -188,9 +190,8 @@ def update_model_dropdown(selected_brand: str) -> Dict[str, List[str]]:
     """Update the model dropdown based on selected brand."""
     models = get_models_for_brand(selected_brand, OPTION_SETS)
     default_value = models[0] if models else None
-    
-    return gr.update(choices=models, value=default_value)
 
+    return gr.update(choices=models, value=default_value)
 
 
 def predict_price(
@@ -287,10 +288,10 @@ def build_ui() -> gr.Blocks:
                 choices=YEAR_CHOICES,
                 value=DEFAULT_YEAR_VALUE,
             )
-            power_input = gr.Dropdown(
+            power_input = gr.Textbox(
                 label="Power (kW)",
-                choices=POWER_CHOICES,
                 value=DEFAULT_POWER_VALUE,
+                type="text",
             )
 
         with gr.Row():
@@ -305,9 +306,9 @@ def build_ui() -> gr.Blocks:
                 value=OPTION_SETS.fuel_types[0],
             )
 
-        mileage_input = gr.Dropdown(
+        mileage_input = gr.Textbox(
             label="Mileage (km)",
-            choices=MILEAGE_CHOICES,
+            # choices=MILEAGE_CHOICES,
             value=DEFAULT_MILEAGE_VALUE,
         )
 

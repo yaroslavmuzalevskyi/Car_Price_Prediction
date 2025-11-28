@@ -3,7 +3,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-model_set = [1, 10, 25, 50, 300]
+model_set = [2, 6, 12, 48, 256]
 
 
 def load_model(model_path: str):

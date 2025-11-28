@@ -9,3 +9,4 @@ fastapi==0.121.2
 pydantic==2.10.5
 pydantic_core==2.27.2
 uvicorn==0.38.0
+gradio==3.40.1

@@ -2,7 +2,7 @@
 
 ## Setting up **venv**: 
 1. `python3 -m venv venv`
-2. `python3 source venv.bin/activate`
+2. `python3 source venv/bin/activate`
 3. `pip3 install -r requirements.txt`
 
 ## Training missing models
@@ -20,8 +20,8 @@ Repeat the process as many times as you need with different `--n-trees` parament
 # Running the APi
 
 1. Open **predict_car_price.py** and write all numbers for models you have to `model_set`. For example: if you have 2 models: **used_car_price_model_12.joblib** and **used_car_price_model_25**, your `model_set = [12, 25]`
-3. Run `python3 -m uvicorn main:app --reload` in the terminal.
-4. Send a POST request with details to 127.0.0.1:8000/get_price formatted like follows:
+2. Run `python3 -m uvicorn main:app --reload` in the terminal.
+3. Send a POST request with details to 127.0.0.1:8000/get_price formatted like follows:
    
 {
     "brand": "Audi",
@@ -36,3 +36,8 @@ Repeat the process as many times as you need with different `--n-trees` parament
 }
 
 `model_id` parameter is used to select the model for processing, for example if `"model_id": 25`, then the script will use **models/used_car_price_model_25.joblib** and so on.
+
+# Running frontend
+
+1. Open **frontend** folder in a new terminal window and run `python3 front.py`
+2. Open **127.0.0.1:7860**
