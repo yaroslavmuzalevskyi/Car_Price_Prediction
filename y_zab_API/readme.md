@@ -7,19 +7,24 @@
 
 ## Training missing models
 
-`python3 train_used_car_price_model.py --n-trees 50 --max-text-features 5000`
+`python3 train_used_car_price_model.py --n-trees 2 --max-text-features 5000`
 
 * `--n-trees` is a mandatory parameter, it stands for the number of trees in the RandomForest.
 
 * `--max-text-features` is an optional parameter (defaults to 5000), it stands for max features for TfidfVectorizer.
 
-**After running the script a model named `used_car_price_model_50.joblib` will be saved to /models**
+**After running the script a model named `used_car_price_model_2.joblib` will be saved to /models**
 
-Repeat the process as many times as you need with different `--n-trees` paramenter value.
+Repeat the process as many times as you need.
+
+> [!IMPORTANT]
+> To test the whole project, run the script with **n-trees=2; 6; 12; 48; 256 each as a separate command**
 
 # Running the APi
 
-1. Open **predict_car_price.py** and write all numbers for models you have to `model_set`. For example: if you have 2 models: **used_car_price_model_12.joblib** and **used_car_price_model_25**, your `model_set = [12, 25]`
+1. Open **predict_car_price.py** and write all numbers for models you have to `model_set`. For example: if you have 2 models: **used_car_price_model_12.joblib** and **used_car_price_model_25**, your `model_set = [12, 25]`.
+   > [!IMPORTANT]
+   > Skip this step if you only have models with 2, 6, 12, 48, 256 n-trees values
 2. Run `python3 -m uvicorn main:app --reload` in the terminal.
 3. Send a POST request with details to 127.0.0.1:8000/get_price formatted like follows:
    
