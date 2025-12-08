@@ -8,7 +8,6 @@ import joblib
 
 TARGET_COLUMN = "price_in_euro"
 
-# Columns used in your pipeline
 NUMERIC_FEATURES = [
     "year",
     "mileage_in_km",
@@ -27,7 +26,6 @@ CATEGORICAL_FEATURES = ["brand", "model", "fuel_type", "color", "transmission_ty
 
 
 def _extract_numeric(value: object) -> float:
-    """Same as in training: extract first number from strings like '5,6 l/100 km'."""
     if pd.isna(value):
         return np.nan
     cleaned = str(value).replace(",", ".")
@@ -41,7 +39,6 @@ def _extract_numeric(value: object) -> float:
 
 
 def _feature_engineering(raw: pd.DataFrame) -> pd.DataFrame:
-    """Apply the same feature engineering as in the training script."""
     df = raw.copy()
 
     # numeric
@@ -50,8 +47,12 @@ def _feature_engineering(raw: pd.DataFrame) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # fuel consumption
-    df["fuel_consumption_l_per_100km"] = df["fuel_consumption_l_100km"].apply(_extract_numeric)
-    df["fuel_consumption_g_per_km"] = df["fuel_consumption_g_km"].apply(_extract_numeric)
+    df["fuel_consumption_l_per_100km"] = df["fuel_consumption_l_100km"].apply(
+        _extract_numeric
+    )
+    df["fuel_consumption_g_per_km"] = df["fuel_consumption_g_km"].apply(
+        _extract_numeric
+    )
 
     # registration date
     df["registration_date_parsed"] = pd.to_datetime(
@@ -74,15 +75,10 @@ def _feature_engineering(raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ---- Load the model once ----
 MODEL = joblib.load("car_price_model.joblib")
 
 
 def estimate_price(car_data: Dict[str, Any]) -> float:
-    """
-    Take a dict with raw car info and return predicted price in euro.
-    car_data must contain at least the columns used below.
-    """
     # make a 1-row DataFrame
     raw_df = pd.DataFrame([car_data])
 
