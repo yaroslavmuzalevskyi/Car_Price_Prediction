@@ -8,7 +8,7 @@ model_set = [2, 6, 12, 48, 256]
 
 def load_model(model_path: str):
     """
-    Load the trained pipeline (preprocessor + RandomForestRegressor).
+    Loading the trained pipeline (preprocessor + RandomForestRegressor).
     """
     m = joblib.load(model_path)
     joblib.dump(m, model_path)
@@ -18,27 +18,16 @@ def load_model(model_path: str):
 def predict_with_uncertainty(
     model, X: pd.DataFrame, lower_q: float = 2.5, upper_q: float = 97.5
 ):
-    """
-    Compute price prediction + uncertainty using tree-wise variance
-    from the RandomForestRegressor inside the pipeline.
-
-    Returns:
-        mean_pred:  (n_samples,) mean price prediction
-        std_pred:   (n_samples,) standard deviation across trees
-        lower:      (n_samples,) lower bound (e.g. 2.5th percentile)
-        upper:      (n_samples,) upper bound (e.g. 97.5th percentile)
-        confidence: (n_samples,) 0-1 heuristic certainty score
-    """
     preprocessor = model.named_steps["preprocessor"]
     rf = model.named_steps["regressor"]
 
-    # Transform features once
+    # Transforming features once
     X_processed = preprocessor.transform(X)
 
-    # Predictions from all trees
+    # Collecting predictions from all trees
     all_tree_preds = np.stack(
         [tree.predict(X_processed) for tree in rf.estimators_],
-        axis=0,  # (n_trees, n_samples)
+        axis=0,
     )
 
     mean_pred = all_tree_preds.mean(axis=0)
@@ -47,7 +36,6 @@ def predict_with_uncertainty(
     lower = np.percentile(all_tree_preds, lower_q, axis=0)
     upper = np.percentile(all_tree_preds, upper_q, axis=0)
 
-    # Simple heuristic confidence score
     interval_width = upper - lower
     confidence = 1.0 - (interval_width / (np.abs(mean_pred) + 1e-8))
     confidence = np.clip(confidence, 0.0, 1.0)
@@ -56,12 +44,6 @@ def predict_with_uncertainty(
 
 
 def build_input_dataframe(args: argparse.Namespace) -> pd.DataFrame:
-    """
-    Build a one-row DataFrame with the exact columns expected by the model.
-    Columns must match what was used in training:
-      brand, model, year, power_kw, transmission_type,
-      fuel_type, mileage_in_km, offer_description
-    """
     data = {
         "brand": args.brand,
         "model": args.model,
@@ -98,9 +80,7 @@ def main(
         or fuel_type is None
         or model_id is None
     ):
-        parser = argparse.ArgumentParser(
-            description="Predict used car price with uncertainty."
-        )
+        parser = argparse.ArgumentParser(description="Predict used car price")
 
         parser.add_argument(
             "--model-path",
@@ -144,7 +124,7 @@ def main(
             dest="offer_description",
             type=str,
             default="",
-            help="Optional textual description of the offer.",
+            help="Textual description of the offer.",
         )
 
         args = parser.parse_args()
@@ -173,7 +153,7 @@ def main(
     # Build input
     X = build_input_dataframe(args)
 
-    # Predict with uncertainty
+    # Predict
     mean_pred, std_pred, lower, upper, confidence = predict_with_uncertainty(model, X)
 
     price = mean_pred[0]

@@ -23,14 +23,12 @@ import argparse
 N_MAX_TEXT_FEATURES = 5000  # Max features for TfidfVectorizer
 
 
-# -------------------------------------------------------------------
-# 1. Data loading
-# -------------------------------------------------------------------
+# Data loading
 
 
 def load_raw_dataset() -> pd.DataFrame:
     """
-    Downloads the Kaggle dataset via kagglehub and loads the single CSV file.
+    Download the Kaggle dataset via kagglehub and load the single CSV file.
     """
     path = kagglehub.dataset_download("wspirat/germany-used-cars-dataset-2023")
     print("Path to dataset files:", path)
@@ -47,17 +45,11 @@ def load_raw_dataset() -> pd.DataFrame:
     return df
 
 
-# -------------------------------------------------------------------
-# 2. Column standardization & feature engineering
-# -------------------------------------------------------------------
+# Column standardization
 
 
 def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Renames original Kaggle columns to the snake_case names you requested,
-    when needed.
-    """
-    # Mapping from likely Kaggle column names -> desired column names
+
     rename_map = {
         "Brand": "brand",
         "Model": "model",
@@ -80,13 +72,12 @@ def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
 
 def ensure_power_kw(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Ensures there is a 'power_kw' column, converting from PS if necessary.
+    Ensure there is a 'power_kw' column, convert from PS if necessary.
     """
     if "power_kw" in df.columns:
         return df
 
     if "power_ps" in df.columns:
-        # 1 PS ≈ 0.735499 kW
         df["power_kw"] = df["power_ps"].astype(float) * 0.735499
         return df
 
@@ -96,10 +87,6 @@ def ensure_power_kw(df: pd.DataFrame) -> pd.DataFrame:
 def prepare_dataset(
     df: pd.DataFrame,
 ) -> Tuple[pd.DataFrame, pd.Series, list, list]:
-    """
-    Keeps only the required columns, handles missing values, and
-    returns X, y, numeric and categorical feature lists.
-    """
     df = standardize_column_names(df)
     df = ensure_power_kw(df)
 
@@ -118,23 +105,19 @@ def prepare_dataset(
     missing = [c for c in required_columns if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns in dataset: {missing}")
-
-    # Work on a copy with only relevant columns
     df = df[required_columns].copy()
 
-    # 1) Make price numeric, drop non-numeric rows
+    # Making price numeric, dropping non-numeric rows
     df["price_in_euro"] = pd.to_numeric(df["price_in_euro"], errors="coerce")
     df = df.dropna(subset=["price_in_euro"])
 
-    # 2) Ensure numeric dtypes for other numeric columns
     df["year"] = pd.to_numeric(df["year"], errors="coerce")
     df["power_kw"] = pd.to_numeric(df["power_kw"], errors="coerce")
     df["mileage_in_km"] = pd.to_numeric(df["mileage_in_km"], errors="coerce")
 
-    # 3) Text column: no NaN
     df["offer_description"] = df["offer_description"].fillna("").astype(str)
 
-    # 4) Separate target and features
+    # Separating target and features
     y = df["price_in_euro"]
     X = df.drop(columns=["price_in_euro"])
 
@@ -144,9 +127,7 @@ def prepare_dataset(
     return X, y, numeric_features, categorical_features
 
 
-# -------------------------------------------------------------------
-# 3. Model building (pipeline)
-# -------------------------------------------------------------------
+# Pipeline
 
 
 def build_model(
@@ -154,7 +135,7 @@ def build_model(
     categorical_features: list,
 ) -> Pipeline:
     """
-    Builds the full preprocessing + RandomForest model pipeline.
+    Building the full preprocessing and RandomForest model pipeline.
     """
 
     parser = argparse.ArgumentParser()
@@ -187,7 +168,6 @@ def build_model(
         ]
     )
 
-    # TfidfVectorizer acts as a simple language model on offer_description
     text_transformer = TfidfVectorizer(
         max_features=args.max_text_features,
         ngram_range=(1, 2),
@@ -209,7 +189,7 @@ def build_model(
         n_jobs=-1,
         max_depth=None,
         min_samples_leaf=1,
-        verbose=2,  # <--- add this line
+        verbose=2,
     )
 
     model = Pipeline(
@@ -222,9 +202,7 @@ def build_model(
     return model, args.n_trees
 
 
-# -------------------------------------------------------------------
-# 4. Uncertainty estimation (via RandomForest ensemble)
-# -------------------------------------------------------------------
+# Uncertainty estimation
 
 
 def predict_with_uncertainty(
@@ -240,20 +218,20 @@ def predict_with_uncertainty(
         lower:      (n_samples,) lower bound (e.g. 2.5th percentile)
         upper:      (n_samples,) upper bound (e.g. 97.5th percentile)
         confidence: (n_samples,) 0-1 heuristic certainty score
-                    (narrower interval => higher confidence)
+                    (the smaller interval => the higher confidence)
     """
 
-    # Split the pipeline to get preprocessor and the underlying RandomForest
+    # Splitting the pipeline to get preprocessor and the underlying RandomForest
     preprocessor = model.named_steps["preprocessor"]
     rf: RandomForestRegressor = model.named_steps["regressor"]
 
-    # Transform features once
+    # Transforming features once
     X_processed = preprocessor.transform(X)
 
-    # Collect predictions of individual trees
+    # Collecting predictions of individual trees
     all_tree_preds = np.stack(
         [tree.predict(X_processed) for tree in rf.estimators_], axis=0
-    )  # shape: (n_trees, n_samples)
+    )
 
     mean_pred = all_tree_preds.mean(axis=0)
     std_pred = all_tree_preds.std(axis=0)
@@ -261,7 +239,6 @@ def predict_with_uncertainty(
     lower = np.percentile(all_tree_preds, lower_q, axis=0)
     upper = np.percentile(all_tree_preds, upper_q, axis=0)
 
-    # Simple heuristic for a confidence score based on interval width
     interval_width = upper - lower
     confidence = 1.0 - (interval_width / (np.abs(mean_pred) + 1e-8))
     confidence = np.clip(confidence, 0.0, 1.0)
@@ -269,22 +246,7 @@ def predict_with_uncertainty(
     return mean_pred, std_pred, lower, upper, confidence
 
 
-# -------------------------------------------------------------------
-# 5. Training and evaluation
-# -------------------------------------------------------------------
-
-
 def train_and_evaluate() -> Pipeline:
-    """
-    Full training routine:
-      - load data
-      - prepare features
-      - train model
-      - evaluate on hold-out set
-      - save trained pipeline
-    Returns:
-      The fitted Pipeline object.
-    """
     df_raw = load_raw_dataset()
     X, y, numeric_features, categorical_features = prepare_dataset(df_raw)
 
@@ -315,7 +277,7 @@ def train_and_evaluate() -> Pipeline:
     print(f"RMSE: {rmse:,.2f} EUR")
     print(f"R²:   {r2:.4f}")
 
-    # Save the trained pipeline
+    # Saveing the trained pipeline
     os.makedirs("models", exist_ok=True)
     model_path = os.path.join("models", f"used_car_price_model_{n_trees}.joblib")
     joblib.dump(model, model_path)
@@ -324,16 +286,7 @@ def train_and_evaluate() -> Pipeline:
     return model
 
 
-# -------------------------------------------------------------------
-# 6. Example usage for a new prediction
-# -------------------------------------------------------------------
-
-
 def example_prediction(model: Pipeline):
-    """
-    Shows how to call the trained model and get prediction + uncertainty
-    for a single example car.
-    """
 
     example_car = pd.DataFrame(
         [
@@ -341,7 +294,7 @@ def example_prediction(model: Pipeline):
                 "brand": "Volkswagen",
                 "model": "Golf",
                 "year": 2018,
-                "power_kw": 85,  # ~115 PS
+                "power_kw": 85,
                 "transmission_type": "Manual",
                 "fuel_type": "Petrol",
                 "mileage_in_km": 60000,
